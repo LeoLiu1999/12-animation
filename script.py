@@ -2,7 +2,7 @@ import mdl
 from display import *
 from matrix import *
 from draw import *
-
+    
 """======== first_pass( commands, symbols ) ==========
 
   Checks the commands array for any animation commands
@@ -19,10 +19,39 @@ from draw import *
   with the name being used.
   ==================== """
 def first_pass( commands ):
-    pass
+    vary_found = False
+    frames_found = False
+    basename_found = False
+    frames = 1
+    for command in commands:
+        op = command['op']
+        args = command['args']
+        if op == "vary":
+            vary_found = True
+        if op == "basename":
+            if basename_found:
+                raise Exception("Multiple basename found!")
+            else:
+                basename = args[0]
+                basename_found = True
+            
+        if op == "frames":
+            if frames_found:
+                raise Exception("Multiple frames found!")
+            elif args[0] < 1:
+                raise Exception("Negative/zero frames count!")
+            else:
+                frames = args[0]
+                frames_found = True
+    if vary_found and not frames_found:
+        raise Exception("vary used without specifying frames!")
+    if frames_found and not basename_found:
+        basename = "image"
+        raise UserWarning("No basename found, output named image")
+    return [basename, frames]
 
 """======== second_pass( commands ) ==========
-
+x
   In order to set the knobs for animation, we need to keep
   a seaprate value for each knob for each frame. We can do
   this by using an array of dictionaries. Each array index
@@ -39,9 +68,19 @@ def first_pass( commands ):
   appropirate value.
   ===================="""
 def second_pass( commands, num_frames ):
-    pass
-
-
+    knobs = [{} for i in range(int(num_frames))]
+    for command in commands:
+        if command['op'] == 'vary':
+            args = command['args']
+            knob_name = args[0]
+            if not knob_name in knobs[0]: #init knob values if needed
+                for frame in knobs:
+                    frame[knob_name] = 0
+            for frame in range( int(args[2]) - int(args[1])):
+                c = ( int(args[4]) - int(args[3])) / ( int(args[2]) - int(args[1]))
+                knobs[frame][knob_name] = c * (frame - int(args[1])) + int(args[3])
+    return knobs
+                
 def run(filename):
     """
     This function runs an mdl script
@@ -89,6 +128,13 @@ def run(filename):
         print "Parsing failed."
         return
 
+    (basename, frames) = first_pass(commands)
+
+    if frames > 1:
+        knobs = second_pass(commands, frames)
+
+    
+    while c < frames:
     for command in commands:
         print command
         c = command['op']
